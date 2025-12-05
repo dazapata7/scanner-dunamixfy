@@ -372,11 +372,15 @@
         }
         
         function enviarASheet(codigo) {
-            console.log('Enviando:', operarioActual, codigo);
+            // Extraer solo los últimos 11 dígitos
+            const codigoCorto = codigo.slice(-11);
+            
+            console.log('Código original:', codigo);
+            console.log('Código extraído:', codigoCorto);
             
             const formData = new URLSearchParams();
             formData.append('operario', operarioActual);
-            formData.append('codigo', codigo);
+            formData.append('codigo', codigoCorto);
             
             fetch(SHEET_URL, {
                 method: 'POST',
@@ -395,7 +399,7 @@
                 
                 document.getElementById('totalScans').textContent = totalScans;
                 document.getElementById('sessionScans').textContent = sessionScans;
-                document.getElementById('lastCode').textContent = codigo;
+                document.getElementById('lastCode').textContent = codigoCorto;
                 document.getElementById('lastScan').classList.add('show');
                 
                 mostrarExito();
