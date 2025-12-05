@@ -218,13 +218,11 @@
             <p>Control de Entregas</p>
         </div>
         
-        <!-- Sección de Login -->
         <div class="login-section" id="loginSection">
             <input type="text" id="operarioInput" placeholder="Ingresa tu nombre" autofocus>
             <button onclick="iniciarSesion()">Iniciar Escaneo</button>
         </div>
         
-        <!-- Sección del Scanner -->
         <div class="scanner-section" id="scannerSection">
             <div class="user-info">
                 <span>Operario: <span class="name" id="operarioName"></span></span>
@@ -270,7 +268,6 @@
         let sessionScans = 0;
         let isProcessing = false;
         
-        // Cargar datos guardados
         window.onload = function() {
             const savedOperario = localStorage.getItem('operario');
             const savedTotal = localStorage.getItem('totalScans');
@@ -328,7 +325,6 @@
                 finalizarSesion();
             }
             
-            // Forzar detención de todos los streams de video
             navigator.mediaDevices.getUserMedia({video: true})
                 .then(stream => {
                     stream.getTracks().forEach(track => track.stop());
@@ -373,13 +369,11 @@
         }
         
         function onScanError(errorMessage) {
-            // Ignorar errores de escaneo continuo
         }
         
         function enviarASheet(codigo) {
             console.log('Enviando:', operarioActual, codigo);
             
-            // Crear parámetros como formulario
             const formData = new URLSearchParams();
             formData.append('operario', operarioActual);
             formData.append('codigo', codigo);
@@ -394,7 +388,6 @@
             .then(response => {
                 console.log('Respuesta recibida');
                 
-                // Actualizar contadores
                 totalScans++;
                 sessionScans++;
                 
@@ -408,7 +401,6 @@
                 mostrarExito();
                 reproducirSonido();
                 
-                // Listo para el siguiente
                 setTimeout(() => {
                     isProcessing = false;
                 }, 1000);
