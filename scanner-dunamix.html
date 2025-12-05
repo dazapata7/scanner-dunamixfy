@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Dunamix - Entregas</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .login-section {
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .login-section input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .login-section button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .scanner-section {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        .scanner-section.active {
+            display: block;
+        }
+        
+        #reader {
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-box .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-box .label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .last-scan {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .last-scan.show {
+            display: block;
+        }
+        
+        .last-scan .title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .last-scan .code {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2e7d32;
+            word-break: break-all;
+        }
+        
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .success-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(46, 125, 50, 0.95);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        
+        .success-animation.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .user-info {
+            background: #f5f5f5;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .user-info .name {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .user-info button {
+            background: #ff5252;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .sound-toggle {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .sound-toggle label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .sound-toggle input {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Scanner Dunamix</h1>
+            <p>Control de Entregas</p>
+        </div>
+        
+        <!-- Sección de Login -->
+        <div class="login-section" id="loginSection">
+            <input type="text" id="operarioInput" placeholder="Ingresa tu nombre" autofocus>
+            <button onclick="iniciarSesion()">Iniciar Escaneo</button>
+        </div>
+        
+        <!-- Sección del Scanner -->
+        <div class="scanner-section" id="scannerSection">
+            <div class="user-info">
+                <span>Operario: <span class="name" id="operarioName"></span></span>
+                <button onclick="cerrarSesion()">Salir</button>
+            </div>
+            
+            <div id="reader"></div>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="number" id="totalScans">0</div>
+                    <div class="label">Total Escaneados</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number" id="sessionScans">0</div>
+                    <div class="label">Esta Sesión</div>
+                </div>
+            </div>
+            
+            <div class="last-scan" id="lastScan">
+                <div class="title">Último escaneo:</div>
+                <div class="code" id="lastCode"></div>
+            </div>
+            
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="sound-toggle">
+                <label>
+                    <input type="checkbox" id="soundToggle" checked>
+                    <span>Sonido de confirmación</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="success-animation" id="successAnimation">✓ Guardado</div>
+
+    <script>
+        const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyhfBmn8ydmITrLBBTDaR1vNPjsh47ThRv_ft-bKF7HZUz4gQ5rp5iMLaapxp_gO5Bu/exec';
+        let html5QrcodeScanner = null;
+        let operarioActual = '';
+        let totalScans = 0;
+        let sessionScans = 0;
+        let isProcessing = false;
+        
+        // Cargar datos guardados
+        window.onload = function() {
+            const savedOperario = localStorage.getItem('operario');
+            const savedTotal = localStorage.getItem('totalScans');
+            
+            if (savedTotal) {
+                totalScans = parseInt(savedTotal);
+            }
+            
+            if (savedOperario) {
+                operarioActual = savedOperario;
+                document.getElementById('operarioInput').value = savedOperario;
+            }
+        };
+        
+        function iniciarSesion() {
+            const input = document.getElementById('operarioInput').value.trim();
+            
+            if (input === '') {
+                alert('Por favor ingresa tu nombre');
+                return;
+            }
+            
+            operarioActual = input;
+            localStorage.setItem('operario', operarioActual);
+            
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('scannerSection').classList.add('active');
+            document.getElementById('operarioName').textContent = operarioActual;
+            document.getElementById('totalScans').textContent = totalScans;
+            
+            iniciarScanner();
+        }
+        
+        function cerrarSesion() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+            }
+            
+            sessionScans = 0;
+            document.getElementById('scannerSection').classList.remove('active');
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('lastScan').classList.remove('show');
+        }
+        
+        function iniciarScanner() {
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanError
+            ).catch(err => {
+                console.error("Error al iniciar cámara:", err);
+                mostrarError("No se pudo acceder a la cámara. Verifica los permisos.");
+            });
+        }
+        
+        function onScanSuccess(decodedText, decodedResult) {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            enviarASheet(decodedText);
+        }
+        
+        function onScanError(errorMessage) {
+            // Ignorar errores de escaneo continuo
+        }
+        
+        async function enviarASheet(codigo) {
+            try {
+                const response = await fetch(SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        operario: operarioActual,
+                        codigo: codigo
+                    })
+                });
+                
+                // Con no-cors no podemos leer la respuesta, pero si llegó aquí, se envió
+                totalScans++;
+                sessionScans++;
+                
+                localStorage.setItem('totalScans', totalScans);
+                
+                document.getElementById('totalScans').textContent = totalScans;
+                document.getElementById('sessionScans').textContent = sessionScans;
+                document.getElementById('lastCode').textContent = codigo;
+                document.getElementById('lastScan').classList.add('show');
+                
+                mostrarExito();
+                reproducirSonido();
+                
+                // Listo para el siguiente escaneo inmediatamente
+                setTimeout(() => {
+                    isProcessing = false;
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarError('Error al guardar. Intenta de nuevo.');
+                isProcessing = false;
+            }
+        }
+        
+        function mostrarExito() {
+            const animation = document.getElementById('successAnimation');
+            animation.classList.add('show');
+            
+            setTimeout(() => {
+                animation.classList.remove('show');
+            }, 1000);
+        }
+        
+        function mostrarError(mensaje) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = mensaje;
+            errorDiv.classList.add('show');
+            
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 3000);
+        }
+        
+        function reproducirSonido() {
+            if (!document.getElementById('soundToggle').checked) return;
+            
+            // Crear sonido de éxito
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+    </script>
+</body>
+</html>
