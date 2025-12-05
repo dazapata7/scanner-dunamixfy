@@ -3,199 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Dunamix - Entregas</title>
+    <title>Dunamixfy Scanner</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Pro+Display:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e1a;
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
+            color: #ffffff;
         }
         
         .container {
-            max-width: 500px;
+            max-width: 480px;
             margin: 0 auto;
+            min-height: 100vh;
+            background: #1a1f2e;
+            display: flex;
+            flex-direction: column;
         }
         
         .header {
-            background: white;
-            padding: 20px;
-            border-radius: 15px 15px 0 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #1a1f2e 0%, #252b3d 100%);
+            padding: 40px 24px 30px;
+            border-bottom: 1px solid rgba(0, 217, 192, 0.1);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
         }
         
-        .header h1 {
-            color: #667eea;
-            font-size: 24px;
-            margin-bottom: 10px;
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0, 217, 192, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
         }
         
-        .login-section {
-            background: white;
-            padding: 20px;
-            border-radius: 0 0 15px 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
         }
         
-        .login-section input {
+        .logo-img {
+            max-width: 280px;
             width: 100%;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            margin-bottom: 10px;
+            height: auto;
+            filter: drop-shadow(0 4px 12px rgba(0, 217, 192, 0.3));
         }
         
-        .login-section button {
-            width: 100%;
-            padding: 15px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 10px;
+        .logo-scan {
+            font-size: 32px;
+            font-weight: 300;
+            color: #00D9C0;
+            font-style: italic;
+            letter-spacing: 1.5px;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         
-        .reset-options {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+        .login-section, .reset-options, .scanner-section {
+            flex: 1;
+            padding: 24px;
             display: none;
         }
         
-        .reset-options.active {
+        .login-section.active, .reset-options.active, .scanner-section.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card {
+            background: rgba(37, 43, 61, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 24px;
+            border: 1px solid rgba(136, 146, 166, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
             display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #8892a6;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 16px;
+            background: rgba(26, 31, 46, 0.8);
+            border: 1.5px solid rgba(136, 146, 166, 0.15);
+            border-radius: 12px;
+            font-size: 16px;
+            color: #ffffff;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #00D9C0;
+            background: rgba(26, 31, 46, 1);
+            box-shadow: 0 0 0 4px rgba(0, 217, 192, 0.1);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00D9C0 0%, #00a89a 100%);
+            color: #0a0e1a;
+            margin-bottom: 12px;
+        }
+        
+        .btn-primary:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(37, 43, 61, 0.8);
+            color: #00D9C0;
+            border: 1.5px solid rgba(0, 217, 192, 0.3);
+        }
+        
+        .btn-secondary:active {
+            transform: scale(0.98);
+            background: rgba(37, 43, 61, 1);
         }
         
         .reset-options h2 {
-            color: #667eea;
-            font-size: 18px;
-            margin-bottom: 15px;
-            text-align: center;
+            font-size: 22px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
         }
         
-        .reset-options button {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
+        .reset-options p {
+            font-size: 14px;
+            color: #8892a6;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        
+        .user-info {
+            background: rgba(37, 43, 61, 0.6);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(136, 146, 166, 0.1);
+        }
+        
+        .user-info .name {
+            font-weight: 600;
+            color: #00D9C0;
+            font-size: 15px;
+        }
+        
+        .user-info button {
+            background: rgba(244, 67, 54, 0.15);
+            color: #ff6b6b;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
             cursor: pointer;
-            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-family: inherit;
         }
         
-        .reset-options button.continue {
-            background: #4caf50;
-            color: white;
-        }
-        
-        .reset-options button.reset {
-            background: #ff9800;
-            color: white;
-        }
-        
-        .scanner-section {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: none;
-        }
-        
-        .scanner-section.active {
-            display: block;
+        .user-info button:active {
+            transform: scale(0.95);
+            background: rgba(244, 67, 54, 0.25);
         }
         
         #reader {
-            border-radius: 10px;
+            border-radius: 16px;
             overflow: hidden;
             margin-bottom: 20px;
+            position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
         
-        .stats {
+        #reader video {
+            border: 3px solid transparent;
+            border-radius: 16px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #reader.scanning video {
+            border-color: #00D9C0;
+            box-shadow: 0 0 30px rgba(0, 217, 192, 0.4),
+                        inset 0 0 20px rgba(0, 217, 192, 0.1);
+        }
+        
+        #reader.success video {
+            border-color: #00D9C0;
+            border-width: 6px;
+            box-shadow: 0 0 40px rgba(0, 217, 192, 0.8),
+                        inset 0 0 30px rgba(0, 217, 192, 0.2);
+        }
+        
+        #reader.repeated video {
+            border-color: #ff6b6b;
+            border-width: 6px;
+            box-shadow: 0 0 40px rgba(255, 107, 107, 0.6),
+                        inset 0 0 30px rgba(255, 107, 107, 0.2);
+        }
+        
+        .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 12px;
             margin-top: 20px;
         }
         
-        .stat-box {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 10px;
+        .stat-card {
+            background: rgba(37, 43, 61, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(136, 146, 166, 0.1);
             text-align: center;
         }
         
-        .stat-box .number {
-            font-size: 28px;
-            font-weight: bold;
-            color: #667eea;
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #00D9C0;
+            line-height: 1;
+            margin-bottom: 6px;
+            letter-spacing: -1px;
         }
         
-        .stat-box .label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+        .stat-card.warning .number {
+            color: #ff6b6b;
         }
         
-        .stat-box.warning .number {
-            color: #ff5252;
+        .stat-card .label {
+            font-size: 11px;
+            color: #8892a6;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        
+        .stats-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 192, 0.3), transparent);
+            margin: 20px 0;
+        }
+        
+        .stats-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #8892a6;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 12px;
+            text-align: center;
         }
         
         .last-scan {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
+            background: linear-gradient(135deg, rgba(0, 217, 192, 0.1) 0%, rgba(0, 217, 192, 0.05) 100%);
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 16px;
             display: none;
+            border: 1px solid rgba(0, 217, 192, 0.2);
         }
         
         .last-scan.show {
             display: block;
+            animation: slideIn 0.4s ease-out;
         }
         
         .last-scan.repeated {
-            background: #ffebee;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(255, 107, 107, 0.05) 100%);
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .last-scan .title {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
+            font-size: 11px;
+            color: #8892a6;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
         }
         
         .last-scan .code {
-            font-size: 16px;
-            font-weight: bold;
-            color: #2e7d32;
+            font-size: 18px;
+            font-weight: 700;
+            color: #00D9C0;
             word-break: break-all;
+            font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+            letter-spacing: 0.5px;
         }
         
         .last-scan.repeated .code {
-            color: #c62828;
+            color: #ff6b6b;
         }
         
         .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
+            background: rgba(255, 107, 107, 0.15);
+            color: #ff6b6b;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 16px;
             display: none;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            font-size: 14px;
+            font-weight: 500;
         }
         
         .error-message.show {
@@ -207,14 +378,16 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0);
-            background: rgba(46, 125, 50, 0.95);
-            color: white;
-            padding: 30px 50px;
+            background: linear-gradient(135deg, rgba(0, 217, 192, 0.95) 0%, rgba(0, 168, 154, 0.95) 100%);
+            color: #0a0e1a;
+            padding: 32px 48px;
             border-radius: 20px;
             font-size: 24px;
-            font-weight: bold;
-            z-index: 1000;
-            transition: transform 0.3s ease;
+            font-weight: 700;
+            z-index: 2000;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 60px rgba(0, 217, 192, 0.4);
+            backdrop-filter: blur(10px);
         }
         
         .success-animation.show {
@@ -222,74 +395,19 @@
         }
         
         .success-animation.repeated {
-            background: rgba(198, 40, 40, 0.95);
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.95) 0%, rgba(244, 67, 54, 0.95) 100%);
+            color: #ffffff;
+            box-shadow: 0 20px 60px rgba(255, 107, 107, 0.4);
         }
         
-        .user-info {
-            background: #f5f5f5;
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .user-info .name {
-            font-weight: bold;
-            color: #667eea;
-        }
-        
-        .user-info button {
-            background: #ff5252;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .sound-toggle {
-            margin-top: 15px;
-            text-align: center;
-        }
-
-        .sound-toggle label {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            cursor: pointer;
-        }
-
-        .sound-toggle input {
-            width: 20px;
-            height: 20px;
-        }
-        
-        .stats-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
-        }
-        
-        .stats-section h3 {
-            color: #667eea;
-            font-size: 16px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-        /* Estilos para feedback visual de escaneo */
         .scan-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(46, 125, 50, 0.3);
-            z-index: 999;
+            background: rgba(0, 217, 192, 0.15);
+            z-index: 1999;
             display: none;
             pointer-events: none;
         }
@@ -300,7 +418,7 @@
         }
         
         .scan-overlay.repeated {
-            background: rgba(198, 40, 40, 0.3);
+            background: rgba(255, 107, 107, 0.15);
         }
         
         @keyframes pulse {
@@ -310,92 +428,129 @@
             100% { opacity: 0; }
         }
         
-        #reader video {
-            border: 3px solid transparent;
+        .sound-toggle {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .sound-toggle label {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            background: rgba(37, 43, 61, 0.6);
+            padding: 12px 20px;
             border-radius: 10px;
-            transition: border-color 0.3s ease, border-width 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(136, 146, 166, 0.1);
+            font-size: 14px;
+            color: #8892a6;
+            transition: all 0.3s ease;
         }
         
-        #reader.scanning video {
-            border-color: #2196F3;
-            box-shadow: 0 0 20px rgba(33, 150, 243, 0.5);
+        .sound-toggle label:active {
+            transform: scale(0.98);
         }
         
-        #reader.success video {
-            border-color: #4CAF50 !important;
-            border-width: 8px !important;
-            box-shadow: 0 0 30px rgba(76, 175, 80, 0.8) !important;
+        .sound-toggle input {
+            width: 20px;
+            height: 20px;
+            accent-color: #00D9C0;
         }
         
-        #reader.repeated video {
-            border-color: #f44336 !important;
-            border-width: 8px !important;
-            box-shadow: 0 0 30px rgba(244, 67, 54, 0.8) !important;
+        /* Efecto Ripple en botones */
+        .btn, .user-info button {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ripple-effect {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple-animation 0.6s ease-out;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚚 Scanner Dunamix</h1>
-            <p>Control de Entregas</p>
+            <div class="logo-container">
+                <img src="https://raw.githubusercontent.com/dazapata7/scanner-dunamixfy/main/dunfy_fondo_coscuro.png?v=1" alt="Dunamixfy Logo" class="logo-img">
+                <span class="logo-scan">Scan</span>
+            </div>
         </div>
         
         <!-- Sección de Login -->
-        <div class="login-section" id="loginSection">
-            <input type="text" id="operarioInput" placeholder="Ingresa tu nombre" autofocus>
-            <button onclick="mostrarOpcionesReset()">Iniciar Escaneo</button>
+        <div class="login-section active" id="loginSection">
+            <div class="card">
+                <div class="input-group">
+                    <label>Nombre del Operario</label>
+                    <input type="text" id="operarioInput" placeholder="Ingresa tu nombre" autofocus>
+                </div>
+                <button class="btn btn-primary" onclick="mostrarOpcionesReset()">Continuar →</button>
+            </div>
         </div>
         
         <!-- Opciones de Reset -->
         <div class="reset-options" id="resetOptions">
-            <h2>¿Qué deseas hacer?</h2>
-            <button class="continue" onclick="iniciarSesion(false)">
-                📊 Continuar Conteo General
-            </button>
-            <button class="reset" onclick="iniciarSesion(true)">
-                🔄 Resetear Conteo General
-            </button>
+            <div class="card">
+                <h2>Configuración de Sesión</h2>
+                <p>Elige cómo deseas iniciar tu sesión de escaneo</p>
+                <button class="btn btn-primary" onclick="iniciarSesion(false)">
+                    📊 Continuar Conteo General
+                </button>
+                <button class="btn btn-secondary" onclick="iniciarSesion(true)">
+                    🔄 Resetear Conteo General
+                </button>
+            </div>
         </div>
         
         <!-- Sección del Scanner -->
         <div class="scanner-section" id="scannerSection">
             <div class="user-info">
-                <span>Operario: <span class="name" id="operarioName"></span></span>
+                <span>👤 <span class="name" id="operarioName"></span></span>
                 <button onclick="cerrarSesion()">Salir</button>
             </div>
             
             <div id="reader"></div>
             
             <!-- Estadísticas de Sesión -->
-            <div class="stats">
-                <div class="stat-box">
+            <div class="stats-grid">
+                <div class="stat-card">
                     <div class="number" id="sessionScans">0</div>
-                    <div class="label">Total Sesión</div>
+                    <div class="label">Sesión</div>
                 </div>
-                <div class="stat-box warning">
+                <div class="stat-card warning">
                     <div class="number" id="sessionRepeated">0</div>
-                    <div class="label">Repetidos Sesión</div>
+                    <div class="label">Repetidos</div>
                 </div>
             </div>
             
-            <!-- Estadísticas Generales -->
-            <div class="stats-section">
-                <h3>Estadísticas Generales</h3>
-                <div class="stats">
-                    <div class="stat-box">
-                        <div class="number" id="totalScans">0</div>
-                        <div class="label">Total General</div>
-                    </div>
-                    <div class="stat-box warning">
-                        <div class="number" id="totalRepeated">0</div>
-                        <div class="label">Repetidos General</div>
-                    </div>
+            <div class="stats-divider"></div>
+            <div class="stats-section-title">Estadísticas Generales</div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="number" id="totalScans">0</div>
+                    <div class="label">Total</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="number" id="totalRepeated">0</div>
+                    <div class="label">Repetidos</div>
                 </div>
             </div>
             
             <div class="last-scan" id="lastScan">
-                <div class="title">Último escaneo:</div>
+                <div class="title">Último Escaneo</div>
                 <div class="code" id="lastCode"></div>
             </div>
             
@@ -404,15 +559,13 @@
             <div class="sound-toggle">
                 <label>
                     <input type="checkbox" id="soundToggle" checked>
-                    <span>Sonido de confirmación</span>
+                    <span>🔊 Sonido de confirmación</span>
                 </label>
             </div>
         </div>
     </div>
     
     <div class="success-animation" id="successAnimation">✓ Guardado</div>
-    
-    <!-- Overlay de confirmación visual -->
     <div class="scan-overlay" id="scanOverlay"></div>
 
     <script>
@@ -420,12 +573,10 @@
         let html5QrcodeScanner = null;
         let operarioActual = '';
         
-        // Contadores Generales (persisten entre sesiones)
         let totalScans = 0;
         let totalRepeated = 0;
         let codigosGenerales = new Set();
         
-        // Contadores de Sesión (se resetean al cerrar)
         let sessionScans = 0;
         let sessionRepeated = 0;
         let codigosSesion = new Set();
@@ -459,7 +610,7 @@
             operarioActual = input;
             localStorage.setItem('operario', operarioActual);
             
-            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('loginSection').classList.remove('active');
             document.getElementById('resetOptions').classList.add('active');
         }
         
@@ -473,7 +624,6 @@
                 localStorage.setItem('codigosGenerales', JSON.stringify([]));
             }
             
-            // Resetear siempre los contadores de sesión
             sessionScans = 0;
             sessionRepeated = 0;
             codigosSesion = new Set();
@@ -527,7 +677,7 @@
         function finalizarSesion() {
             html5QrcodeScanner = null;
             document.getElementById('scannerSection').classList.remove('active');
-            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('loginSection').classList.add('active');
             document.getElementById('lastScan').classList.remove('show');
             document.getElementById('errorMessage').classList.remove('show');
         }
@@ -547,7 +697,6 @@
                 onScanSuccess,
                 onScanError
             ).then(() => {
-                // Agregar indicador visual de que está escaneando
                 document.getElementById('reader').classList.add('scanning');
             }).catch(err => {
                 console.error("Error al iniciar cámara:", err);
@@ -560,7 +709,6 @@
             
             isProcessing = true;
             
-            // Pausar el scanner temporalmente
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.pause(true);
             }
@@ -572,22 +720,18 @@
         }
         
         function enviarASheet(codigo) {
-            // Extraer 11 dígitos antes de los últimos 3 caracteres
             const codigoCorto = codigo.slice(-14, -3);
             
             console.log('Código original:', codigo);
             console.log('Código extraído:', codigoCorto);
             
-            // Verificar si es repetido
             const esRepetidoSesion = codigosSesion.has(codigoCorto);
             const esRepetidoGeneral = codigosGenerales.has(codigoCorto);
             const esRepetido = esRepetidoSesion || esRepetidoGeneral;
             
-            // Agregar a los conjuntos
             codigosSesion.add(codigoCorto);
             codigosGenerales.add(codigoCorto);
             
-            // Actualizar contadores
             sessionScans++;
             totalScans++;
             
@@ -596,12 +740,10 @@
                 totalRepeated++;
             }
             
-            // Guardar en localStorage
             localStorage.setItem('totalScans', totalScans);
             localStorage.setItem('totalRepeated', totalRepeated);
             localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
             
-            // Enviar a Google Sheets
             const formData = new URLSearchParams();
             formData.append('operario', operarioActual);
             formData.append('codigo', codigoCorto);
@@ -619,21 +761,18 @@
                 
                 actualizarEstadisticas();
                 
-                // Mostrar último código
                 const lastScanDiv = document.getElementById('lastScan');
                 lastScanDiv.classList.remove('repeated');
                 if (esRepetido) {
                     lastScanDiv.classList.add('repeated');
                 }
-                document.getElementById('lastCode').textContent = codigoCorto + (esRepetido ? ' - REPETIDO ⚠️' : '');
+                document.getElementById('lastCode').textContent = codigoCorto + (esRepetido ? ' ⚠️ REPETIDO' : '');
                 lastScanDiv.classList.add('show');
                 
-                // Feedback visual en el video
                 const readerDiv = document.getElementById('reader');
                 readerDiv.classList.remove('scanning');
                 readerDiv.classList.add(esRepetido ? 'repeated' : 'success');
                 
-                // Overlay de pantalla completa
                 const overlay = document.getElementById('scanOverlay');
                 overlay.classList.remove('repeated');
                 if (esRepetido) {
@@ -644,7 +783,6 @@
                 mostrarExito(esRepetido);
                 reproducirSonido(esRepetido);
                 
-                // Esperar 1.5 segundos para que se aprecie el feedback
                 setTimeout(() => {
                     readerDiv.classList.remove('success', 'repeated');
                     readerDiv.classList.add('scanning');
@@ -660,7 +798,6 @@
                 console.error('Error:', error);
                 mostrarError('Error al guardar. Intenta de nuevo.');
                 
-                // Reanudar scanner incluso si hay error
                 setTimeout(() => {
                     if (html5QrcodeScanner) {
                         html5QrcodeScanner.resume();
@@ -678,14 +815,14 @@
                 animation.classList.add('repeated');
                 animation.textContent = '⚠️ REPETIDO';
             } else {
-                animation.textContent = '✓ Guardado';
+                animation.textContent = '✓ GUARDADO';
             }
             
             animation.classList.add('show');
             
             setTimeout(() => {
                 animation.classList.remove('show');
-            }, 1000);
+            }, 1200);
         }
         
         function mostrarError(mensaje) {
@@ -708,17 +845,43 @@
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            // Sonido diferente para repetidos
             oscillator.frequency.value = esRepetido ? 400 : 800;
             oscillator.type = 'sine';
             
-            // Volumen más alto: cambiado de 0.3 a 0.7
             gainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
             
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
         }
+    </script>
+    
+    <script>
+        // Efecto Ripple en botones
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.btn, .user-info button');
+            
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const ripple = document.createElement('span');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.style.width = ripple.style.height = size + 'px';
+                    ripple.style.left = x + 'px';
+                    ripple.style.top = y + 'px';
+                    ripple.classList.add('ripple-effect');
+                    
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+        });
     </script>
 </body>
 </html>
