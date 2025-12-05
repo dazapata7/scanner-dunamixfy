@@ -64,6 +64,48 @@
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .reset-options {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .reset-options.active {
+            display: block;
+        }
+        
+        .reset-options h2 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .reset-options button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .reset-options button.continue {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .reset-options button.reset {
+            background: #ff9800;
+            color: white;
         }
         
         .scanner-section {
@@ -99,15 +141,19 @@
         }
         
         .stat-box .number {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: bold;
             color: #667eea;
         }
         
         .stat-box .label {
-            font-size: 14px;
+            font-size: 12px;
             color: #666;
             margin-top: 5px;
+        }
+        
+        .stat-box.warning .number {
+            color: #ff5252;
         }
         
         .last-scan {
@@ -122,6 +168,10 @@
             display: block;
         }
         
+        .last-scan.repeated {
+            background: #ffebee;
+        }
+        
         .last-scan .title {
             font-size: 12px;
             color: #666;
@@ -133,6 +183,10 @@
             font-weight: bold;
             color: #2e7d32;
             word-break: break-all;
+        }
+        
+        .last-scan.repeated .code {
+            color: #c62828;
         }
         
         .error-message {
@@ -165,6 +219,10 @@
         
         .success-animation.show {
             transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .success-animation.repeated {
+            background: rgba(198, 40, 40, 0.95);
         }
         
         .user-info {
@@ -209,6 +267,19 @@
             width: 20px;
             height: 20px;
         }
+        
+        .stats-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        .stats-section h3 {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -218,11 +289,24 @@
             <p>Control de Entregas</p>
         </div>
         
+        <!-- Sección de Login -->
         <div class="login-section" id="loginSection">
             <input type="text" id="operarioInput" placeholder="Ingresa tu nombre" autofocus>
-            <button onclick="iniciarSesion()">Iniciar Escaneo</button>
+            <button onclick="mostrarOpcionesReset()">Iniciar Escaneo</button>
         </div>
         
+        <!-- Opciones de Reset -->
+        <div class="reset-options" id="resetOptions">
+            <h2>¿Qué deseas hacer?</h2>
+            <button class="continue" onclick="iniciarSesion(false)">
+                📊 Continuar Conteo General
+            </button>
+            <button class="reset" onclick="iniciarSesion(true)">
+                🔄 Resetear Conteo General
+            </button>
+        </div>
+        
+        <!-- Sección del Scanner -->
         <div class="scanner-section" id="scannerSection">
             <div class="user-info">
                 <span>Operario: <span class="name" id="operarioName"></span></span>
@@ -231,14 +315,30 @@
             
             <div id="reader"></div>
             
+            <!-- Estadísticas de Sesión -->
             <div class="stats">
                 <div class="stat-box">
-                    <div class="number" id="totalScans">0</div>
-                    <div class="label">Total Escaneados</div>
-                </div>
-                <div class="stat-box">
                     <div class="number" id="sessionScans">0</div>
-                    <div class="label">Esta Sesión</div>
+                    <div class="label">Total Sesión</div>
+                </div>
+                <div class="stat-box warning">
+                    <div class="number" id="sessionRepeated">0</div>
+                    <div class="label">Repetidos Sesión</div>
+                </div>
+            </div>
+            
+            <!-- Estadísticas Generales -->
+            <div class="stats-section">
+                <h3>Estadísticas Generales</h3>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="number" id="totalScans">0</div>
+                        <div class="label">Total General</div>
+                    </div>
+                    <div class="stat-box warning">
+                        <div class="number" id="totalRepeated">0</div>
+                        <div class="label">Repetidos General</div>
+                    </div>
                 </div>
             </div>
             
@@ -264,17 +364,28 @@
         const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyhfBmn8ydmITrLBBTDaR1vNPjsh47ThRv_ft-bKF7HZUz4gQ5rp5iMLaapxp_gO5Bu/exec';
         let html5QrcodeScanner = null;
         let operarioActual = '';
+        
+        // Contadores Generales (persisten entre sesiones)
         let totalScans = 0;
+        let totalRepeated = 0;
+        let codigosGenerales = new Set();
+        
+        // Contadores de Sesión (se resetean al cerrar)
         let sessionScans = 0;
+        let sessionRepeated = 0;
+        let codigosSesion = new Set();
+        
         let isProcessing = false;
         
         window.onload = function() {
             const savedOperario = localStorage.getItem('operario');
             const savedTotal = localStorage.getItem('totalScans');
+            const savedRepeated = localStorage.getItem('totalRepeated');
+            const savedCodigos = localStorage.getItem('codigosGenerales');
             
-            if (savedTotal) {
-                totalScans = parseInt(savedTotal);
-            }
+            if (savedTotal) totalScans = parseInt(savedTotal);
+            if (savedRepeated) totalRepeated = parseInt(savedRepeated);
+            if (savedCodigos) codigosGenerales = new Set(JSON.parse(savedCodigos));
             
             if (savedOperario) {
                 operarioActual = savedOperario;
@@ -282,7 +393,7 @@
             }
         };
         
-        function iniciarSesion() {
+        function mostrarOpcionesReset() {
             const input = document.getElementById('operarioInput').value.trim();
             
             if (input === '') {
@@ -294,11 +405,37 @@
             localStorage.setItem('operario', operarioActual);
             
             document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('resetOptions').classList.add('active');
+        }
+        
+        function iniciarSesion(resetGeneral) {
+            if (resetGeneral) {
+                totalScans = 0;
+                totalRepeated = 0;
+                codigosGenerales = new Set();
+                localStorage.setItem('totalScans', '0');
+                localStorage.setItem('totalRepeated', '0');
+                localStorage.setItem('codigosGenerales', JSON.stringify([]));
+            }
+            
+            // Resetear siempre los contadores de sesión
+            sessionScans = 0;
+            sessionRepeated = 0;
+            codigosSesion = new Set();
+            
+            document.getElementById('resetOptions').classList.remove('active');
             document.getElementById('scannerSection').classList.add('active');
             document.getElementById('operarioName').textContent = operarioActual;
-            document.getElementById('totalScans').textContent = totalScans;
             
+            actualizarEstadisticas();
             iniciarScanner();
+        }
+        
+        function actualizarEstadisticas() {
+            document.getElementById('totalScans').textContent = totalScans;
+            document.getElementById('totalRepeated').textContent = totalRepeated;
+            document.getElementById('sessionScans').textContent = sessionScans;
+            document.getElementById('sessionRepeated').textContent = sessionRepeated;
         }
         
         function cerrarSesion() {
@@ -333,7 +470,6 @@
         }
         
         function finalizarSesion() {
-            sessionScans = 0;
             html5QrcodeScanner = null;
             document.getElementById('scannerSection').classList.remove('active');
             document.getElementById('loginSection').style.display = 'block';
@@ -372,15 +508,40 @@
         }
         
         function enviarASheet(codigo) {
-            // Extraer solo los últimos 11 dígitos
+            // Extraer 11 dígitos antes de los últimos 3 caracteres
             const codigoCorto = codigo.slice(-14, -3);
             
             console.log('Código original:', codigo);
             console.log('Código extraído:', codigoCorto);
             
+            // Verificar si es repetido
+            const esRepetidoSesion = codigosSesion.has(codigoCorto);
+            const esRepetidoGeneral = codigosGenerales.has(codigoCorto);
+            const esRepetido = esRepetidoSesion || esRepetidoGeneral;
+            
+            // Agregar a los conjuntos
+            codigosSesion.add(codigoCorto);
+            codigosGenerales.add(codigoCorto);
+            
+            // Actualizar contadores
+            sessionScans++;
+            totalScans++;
+            
+            if (esRepetido) {
+                sessionRepeated++;
+                totalRepeated++;
+            }
+            
+            // Guardar en localStorage
+            localStorage.setItem('totalScans', totalScans);
+            localStorage.setItem('totalRepeated', totalRepeated);
+            localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
+            
+            // Enviar a Google Sheets
             const formData = new URLSearchParams();
             formData.append('operario', operarioActual);
             formData.append('codigo', codigoCorto);
+            formData.append('repetido', esRepetido ? 'SI' : 'NO');
             
             fetch(SHEET_URL, {
                 method: 'POST',
@@ -392,18 +553,19 @@
             .then(response => {
                 console.log('Respuesta recibida');
                 
-                totalScans++;
-                sessionScans++;
+                actualizarEstadisticas();
                 
-                localStorage.setItem('totalScans', totalScans);
+                // Mostrar último código
+                const lastScanDiv = document.getElementById('lastScan');
+                lastScanDiv.classList.remove('repeated');
+                if (esRepetido) {
+                    lastScanDiv.classList.add('repeated');
+                }
+                document.getElementById('lastCode').textContent = codigoCorto + (esRepetido ? ' - REPETIDO ⚠️' : '');
+                lastScanDiv.classList.add('show');
                 
-                document.getElementById('totalScans').textContent = totalScans;
-                document.getElementById('sessionScans').textContent = sessionScans;
-                document.getElementById('lastCode').textContent = codigoCorto;
-                document.getElementById('lastScan').classList.add('show');
-                
-                mostrarExito();
-                reproducirSonido();
+                mostrarExito(esRepetido);
+                reproducirSonido(esRepetido);
                 
                 setTimeout(() => {
                     isProcessing = false;
@@ -416,8 +578,17 @@
             });
         }
         
-        function mostrarExito() {
+        function mostrarExito(esRepetido) {
             const animation = document.getElementById('successAnimation');
+            animation.classList.remove('repeated');
+            
+            if (esRepetido) {
+                animation.classList.add('repeated');
+                animation.textContent = '⚠️ REPETIDO';
+            } else {
+                animation.textContent = '✓ Guardado';
+            }
+            
             animation.classList.add('show');
             
             setTimeout(() => {
@@ -435,7 +606,7 @@
             }, 3000);
         }
         
-        function reproducirSonido() {
+        function reproducirSonido(esRepetido) {
             if (!document.getElementById('soundToggle').checked) return;
             
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -445,14 +616,15 @@
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            oscillator.frequency.value = 800;
+            // Sonido diferente para repetidos
+            oscillator.frequency.value = esRepetido ? 400 : 800;
             oscillator.type = 'sine';
             
             gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
             
             oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.1);
+            oscillator.stop(audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
         }
     </script>
 </body>
