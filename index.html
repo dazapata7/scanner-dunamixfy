@@ -306,13 +306,25 @@
         
         function cerrarSesion() {
             if (html5QrcodeScanner) {
-                html5QrcodeScanner.clear();
+                html5QrcodeScanner.stop().then(() => {
+                    html5QrcodeScanner.clear();
+                    finalizarSesion();
+                }).catch(err => {
+                    console.log('Error al detener:', err);
+                    finalizarSesion();
+                });
+            } else {
+                finalizarSesion();
             }
-            
+        }
+        
+        function finalizarSesion() {
             sessionScans = 0;
+            html5QrcodeScanner = null;
             document.getElementById('scannerSection').classList.remove('active');
             document.getElementById('loginSection').style.display = 'block';
             document.getElementById('lastScan').classList.remove('show');
+            document.getElementById('errorMessage').classList.remove('show');
         }
         
         function iniciarScanner() {
