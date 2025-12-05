@@ -501,6 +501,12 @@
             if (isProcessing) return;
             
             isProcessing = true;
+            
+            // Pausar el scanner temporalmente
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.pause(true);
+            }
+            
             enviarASheet(decodedText);
         }
         
@@ -567,14 +573,25 @@
                 mostrarExito(esRepetido);
                 reproducirSonido(esRepetido);
                 
+                // Esperar 2 segundos antes de permitir otro escaneo
                 setTimeout(() => {
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.resume();
+                    }
                     isProcessing = false;
-                }, 1000);
+                }, 2000);
             })
             .catch(error => {
                 console.error('Error:', error);
                 mostrarError('Error al guardar. Intenta de nuevo.');
-                isProcessing = false;
+                
+                // Reanudar scanner incluso si hay error
+                setTimeout(() => {
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.resume();
+                    }
+                    isProcessing = false;
+                }, 1500);
             });
         }
         
@@ -613,19 +630,4 @@
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // Sonido diferente para repetidos
-            oscillator.frequency.value = esRepetido ? 400 : 800;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
-        }
-    </script>
-</body>
-</html>
+            oscillator.connect
