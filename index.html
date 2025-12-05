@@ -280,6 +280,58 @@
             margin-bottom: 15px;
             text-align: center;
         }
+        
+        /* Estilos para feedback visual de escaneo */
+        .scan-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(46, 125, 50, 0.3);
+            z-index: 999;
+            display: none;
+            pointer-events: none;
+        }
+        
+        .scan-overlay.show {
+            display: block;
+            animation: pulse 1.5s ease-out;
+        }
+        
+        .scan-overlay.repeated {
+            background: rgba(198, 40, 40, 0.3);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        #reader video {
+            border: 3px solid transparent;
+            border-radius: 10px;
+            transition: border-color 0.3s ease, border-width 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        #reader.scanning video {
+            border-color: #2196F3;
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.5);
+        }
+        
+        #reader.success video {
+            border-color: #4CAF50 !important;
+            border-width: 8px !important;
+            box-shadow: 0 0 30px rgba(76, 175, 80, 0.8) !important;
+        }
+        
+        #reader.repeated video {
+            border-color: #f44336 !important;
+            border-width: 8px !important;
+            box-shadow: 0 0 30px rgba(244, 67, 54, 0.8) !important;
+        }
     </style>
 </head>
 <body>
@@ -359,6 +411,9 @@
     </div>
     
     <div class="success-animation" id="successAnimation">✓ Guardado</div>
+    
+    <!-- Overlay de confirmación visual -->
+    <div class="scan-overlay" id="scanOverlay"></div>
 
     <script>
         const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyhfBmn8ydmITrLBBTDaR1vNPjsh47ThRv_ft-bKF7HZUz4gQ5rp5iMLaapxp_gO5Bu/exec';
@@ -491,7 +546,10 @@
                 config,
                 onScanSuccess,
                 onScanError
-            ).catch(err => {
+            ).then(() => {
+                // Agregar indicador visual de que está escaneando
+                document.getElementById('reader').classList.add('scanning');
+            }).catch(err => {
                 console.error("Error al iniciar cámara:", err);
                 mostrarError("No se pudo acceder a la cámara. Verifica los permisos.");
             });
@@ -570,16 +628,33 @@
                 document.getElementById('lastCode').textContent = codigoCorto + (esRepetido ? ' - REPETIDO ⚠️' : '');
                 lastScanDiv.classList.add('show');
                 
+                // Feedback visual en el video
+                const readerDiv = document.getElementById('reader');
+                readerDiv.classList.remove('scanning');
+                readerDiv.classList.add(esRepetido ? 'repeated' : 'success');
+                
+                // Overlay de pantalla completa
+                const overlay = document.getElementById('scanOverlay');
+                overlay.classList.remove('repeated');
+                if (esRepetido) {
+                    overlay.classList.add('repeated');
+                }
+                overlay.classList.add('show');
+                
                 mostrarExito(esRepetido);
                 reproducirSonido(esRepetido);
                 
-                // Esperar 2 segundos antes de permitir otro escaneo
+                // Esperar 1.5 segundos para que se aprecie el feedback
                 setTimeout(() => {
+                    readerDiv.classList.remove('success', 'repeated');
+                    readerDiv.classList.add('scanning');
+                    overlay.classList.remove('show');
+                    
                     if (html5QrcodeScanner) {
                         html5QrcodeScanner.resume();
                     }
                     isProcessing = false;
-                }, 2000);
+                }, 1500);
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -630,4 +705,20 @@
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             
-            oscillator.connect
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Sonido diferente para repetidos
+            oscillator.frequency.value = esRepetido ? 400 : 800;
+            oscillator.type = 'sine';
+            
+            // Volumen más alto: cambiado de 0.3 a 0.7
+            gainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + (esRepetido ? 0.2 : 0.1));
+        }
+    </script>
+</body>
+</html>
