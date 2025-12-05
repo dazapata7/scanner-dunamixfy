@@ -373,7 +373,7 @@
         
         function enviarASheet(codigo) {
             // Extraer solo los últimos 11 dígitos
-            const codigoCorto = codigo.slice(-11);
+            const codigoCorto = codigo.slice(-14, -3);
             
             console.log('Código original:', codigo);
             console.log('Código extraído:', codigoCorto);
