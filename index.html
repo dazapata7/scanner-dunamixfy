@@ -716,17 +716,25 @@
         }
         
         function mostrarScanner() {
+            console.log('🎥 Iniciando scanner...');
+            
+            // Resetear estado
+            isProcessing = false;
+            
             document.getElementById('dailyDashboard').style.display = 'none';
             document.getElementById('carrierSelector').style.display = 'none';
             document.getElementById('scannerContainer').style.display = 'block';
             
             if (!html5QrcodeScanner) {
                 iniciarScanner();
+            } else {
+                console.log('✅ Scanner ya inicializado');
             }
         }
         
         function continuarEscaneo() {
             // Simplemente ir al scanner sin resetear nada
+            console.log('▶️ Continuar escaneo');
             mostrarScanner();
         }
         
@@ -896,6 +904,7 @@
         }
         
         function cerrarSesion() {
+            // Solo intentar detener la cámara si el scanner está activo
             if (html5QrcodeScanner) {
                 try {
                     html5QrcodeScanner.stop().then(() => {
@@ -916,14 +925,18 @@
                     finalizarSesion();
                 }
             } else {
+                // Si no hay scanner activo, solo cerrar sesión
                 finalizarSesion();
             }
             
+            // Detener todos los streams de video
             navigator.mediaDevices.getUserMedia({video: true})
                 .then(stream => {
                     stream.getTracks().forEach(track => track.stop());
                 })
-                .catch(() => {});
+                .catch(() => {
+                    // No hay stream activo, continuar
+                });
         }
         
         function finalizarSesion() {
@@ -932,6 +945,10 @@
             document.getElementById('loginSection').classList.add('active');
             document.getElementById('lastScan').classList.remove('show');
             document.getElementById('errorMessage').classList.remove('show');
+            
+            // Resetear vistas
+            document.getElementById('dailyDashboard').style.display = 'none';
+            document.getElementById('scannerContainer').style.display = 'none';
         }
         
         function iniciarScanner() {
@@ -957,9 +974,15 @@
         }
         
         function onScanSuccess(decodedText, decodedResult) {
-            if (isProcessing) return;
+            console.log('🔍 QR detectado:', decodedText);
+            
+            if (isProcessing) {
+                console.log('⏸️ Ya procesando otro código, ignorando...');
+                return;
+            }
             
             isProcessing = true;
+            console.log('✅ Iniciando procesamiento...');
             
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.pause(true);
@@ -972,6 +995,9 @@
         }
         
         function enviarASheet(codigo) {
+            console.log('📨 enviarASheet llamado con:', codigo);
+            console.log('📊 Estado actual - isProcessing:', isProcessing);
+            
             // 1. Validar formato
             if (!esFormatoValido(codigo)) {
                 console.log('❌ Formato no válido:', codigo);
