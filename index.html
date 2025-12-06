@@ -559,8 +559,12 @@
                     📷 Continuar Escaneo
                 </button>
                 
+                <button class="btn btn-secondary" onclick="sincronizarManual()" style="margin-bottom: 12px;">
+                    🔄 Sincronizar Base de Datos
+                </button>
+                
                 <button class="btn btn-secondary" onclick="resetearConteoGeneral()" style="margin-bottom: 12px;">
-                    🔄 Resetear Conteo General
+                    ♻️ Resetear Conteo General
                 </button>
                 
                 <button class="btn btn-secondary" onclick="abrirDashboardCompleto()">
@@ -664,17 +668,32 @@
         
         // Validar si el código tiene un formato válido de transportadora conocida
         function esFormatoValido(codigo) {
+            console.log('🧪 Validando formato...');
+            console.log('  - Código:', codigo);
+            console.log('  - Longitud:', codigo.length);
+            console.log('  - Últimos 3:', codigo.slice(-3));
+            console.log('  - Termina en "001"?:', codigo.endsWith('001'));
+            console.log('  - Longitud > 20?:', codigo.length > 20);
+            
             // Coordinadora: termina en "001" y tiene más de 20 caracteres
             if (codigo.endsWith('001') && codigo.length > 20) {
+                console.log('  ✅ COORDINADORA válida');
                 return true;
             }
             
             // Interrápidisimo: 12 o 13 dígitos que empiezan con "24"
             const length = codigo.length;
-            if ((length === 12 || length === 13) && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
+            const esNumero = /^\d+$/.test(codigo);
+            console.log('  - Empieza con "24"?:', codigo.startsWith('24'));
+            console.log('  - Es solo números?:', esNumero);
+            console.log('  - Longitud 12 o 13?:', length === 12 || length === 13);
+            
+            if ((length === 12 || length === 13) && codigo.startsWith('24') && esNumero) {
+                console.log('  ✅ INTERRÁPIDISIMO válido');
                 return true;
             }
             
+            console.log('  ❌ FORMATO NO VÁLIDO');
             return false;
         }
         
@@ -739,9 +758,112 @@
         }
         
         function continuarEscaneo() {
-            // Simplemente ir al scanner sin resetear nada
-            console.log('▶️ Continuar escaneo');
-            mostrarScanner();
+            // Sincronizar antes de iniciar scanner para tener datos frescos
+            console.log('🔄 Sincronizando antes de escanear...');
+            
+            const msgSync = document.createElement('div');
+            msgSync.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 217, 192, 0.95); color: #0a0e1a; padding: 15px 30px; border-radius: 12px; font-weight: 600; z-index: 9999;';
+            msgSync.textContent = '🔄 Actualizando base de datos...';
+            document.body.appendChild(msgSync);
+            
+            fetch(SHEET_URL, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.codigos) {
+                    codigosGenerales = new Set(data.codigos);
+                    localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
+                    
+                    totalScans = data.total;
+                    localStorage.setItem('totalScans', totalScans);
+                    
+                    // Actualizar stats del día
+                    if (data.statsHoy) {
+                        todayScans = data.statsHoy.total;
+                        todayByCarrier = {
+                            coordinadora: data.statsHoy.coordinadora,
+                            interrapidisimo: data.statsHoy.interrapidisimo
+                        };
+                    }
+                    
+                    console.log(`✅ Sincronizado: ${data.total} códigos | Hoy: ${todayScans}`);
+                    msgSync.textContent = `✅ ${data.total} códigos | Hoy: ${todayScans}`;
+                    
+                    setTimeout(() => {
+                        msgSync.remove();
+                        mostrarScanner();
+                    }, 800);
+                } else {
+                    msgSync.remove();
+                    mostrarScanner();
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error al sincronizar:', error);
+                msgSync.textContent = '⚠️ Sin conexión, usando cache local';
+                setTimeout(() => {
+                    msgSync.remove();
+                    mostrarScanner();
+                }, 1500);
+            });
+        }
+        
+        function sincronizarManual() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔄 Sincronizando...';
+            
+            console.log('🔄 Sincronización manual solicitada');
+            
+            fetch(SHEET_URL, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.codigos) {
+                    const cantidadAnterior = codigosGenerales.size;
+                    codigosGenerales = new Set(data.codigos);
+                    localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
+                    
+                    totalScans = data.total;
+                    totalRepeated = 0;
+                    localStorage.setItem('totalScans', totalScans);
+                    localStorage.setItem('totalRepeated', '0');
+                    
+                    // Actualizar stats del día desde Sheets
+                    if (data.statsHoy) {
+                        todayScans = data.statsHoy.total;
+                        todayByCarrier = {
+                            coordinadora: data.statsHoy.coordinadora,
+                            interrapidisimo: data.statsHoy.interrapidisimo
+                        };
+                        console.log('📊 Stats actualizadas:', data.statsHoy);
+                        actualizarDashboardDiario();
+                    }
+                    
+                    actualizarEstadisticas();
+                    
+                    const diferencia = data.total - cantidadAnterior;
+                    console.log(`✅ Sincronización manual: ${data.total} códigos (${diferencia >= 0 ? '+' : ''}${diferencia})`);
+                    
+                    btn.textContent = `✅ ${data.total} códigos | Hoy: ${todayScans}`;
+                    setTimeout(() => {
+                        btn.textContent = '🔄 Sincronizar Base de Datos';
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error('No se recibieron códigos');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error en sincronización manual:', error);
+                btn.textContent = '❌ Error de conexión';
+                setTimeout(() => {
+                    btn.textContent = '🔄 Sincronizar Base de Datos';
+                    btn.disabled = false;
+                }, 2000);
+            });
         }
         
         function resetearConteoGeneral() {
@@ -906,6 +1028,26 @@
                     localStorage.setItem('totalScans', totalScans);
                     localStorage.setItem('totalRepeated', '0');
                     
+                    // IMPORTANTE: Actualizar estadísticas del día desde Sheets
+                    if (data.statsHoy) {
+                        todayScans = data.statsHoy.total;
+                        todayByCarrier = {
+                            coordinadora: data.statsHoy.coordinadora,
+                            interrapidisimo: data.statsHoy.interrapidisimo
+                        };
+                        console.log('📊 Stats del día desde Sheets:', data.statsHoy);
+                        
+                        // Guardar en localStorage
+                        const hoy = new Date().toISOString().split('T')[0];
+                        const statsData = {
+                            total: todayScans,
+                            repeated: 0,
+                            byCarrier: todayByCarrier,
+                            fecha: hoy
+                        };
+                        localStorage.setItem(`stats_${hoy}`, JSON.stringify(statsData));
+                    }
+                    
                     console.log(`✅ Sincronizado: ${data.total} códigos desde Google Sheets`);
                     console.log('📋 Códigos cargados:', [...codigosGenerales].slice(0, 5), '...');
                     
@@ -947,6 +1089,55 @@
             
             actualizarEstadisticas();
             cargarEstadisticasDelDia();
+            
+            // Iniciar sincronización periódica cada 30 segundos
+            if (window.syncInterval) {
+                clearInterval(window.syncInterval);
+            }
+            window.syncInterval = setInterval(sincronizarCodigosEnBackground, 30000);
+            console.log('🔄 Sincronización automática activada (cada 30s)');
+        }
+        
+        // Sincronizar códigos en background sin mostrar mensaje
+        function sincronizarCodigosEnBackground() {
+            console.log('🔄 Sincronización automática en background...');
+            
+            fetch(SHEET_URL, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.codigos) {
+                    const cantidadAnterior = codigosGenerales.size;
+                    codigosGenerales = new Set(data.codigos);
+                    localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
+                    
+                    totalScans = data.total;
+                    localStorage.setItem('totalScans', totalScans);
+                    
+                    // Actualizar stats del día
+                    if (data.statsHoy) {
+                        todayScans = data.statsHoy.total;
+                        todayByCarrier = {
+                            coordinadora: data.statsHoy.coordinadora,
+                            interrapidisimo: data.statsHoy.interrapidisimo
+                        };
+                        actualizarDashboardDiario();
+                    }
+                    
+                    const diferencia = data.total - cantidadAnterior;
+                    if (diferencia > 0) {
+                        console.log(`✅ Sincronización: ${diferencia} códigos nuevos detectados`);
+                    } else {
+                        console.log(`✅ Sincronización: Base de datos actualizada (${data.total} códigos)`);
+                    }
+                    
+                    actualizarEstadisticas();
+                }
+            })
+            .catch(error => {
+                console.log('⚠️ Error en sincronización automática:', error);
+            });
         }
         
         function actualizarEstadisticas() {
@@ -994,6 +1185,14 @@
         
         function finalizarSesion() {
             html5QrcodeScanner = null;
+            
+            // Detener sincronización automática
+            if (window.syncInterval) {
+                clearInterval(window.syncInterval);
+                window.syncInterval = null;
+                console.log('⏹️ Sincronización automática detenida');
+            }
+            
             document.getElementById('scannerSection').classList.remove('active');
             document.getElementById('loginSection').classList.add('active');
             document.getElementById('lastScan').classList.remove('show');
