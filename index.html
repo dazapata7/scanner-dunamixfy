@@ -507,24 +507,15 @@
             </div>
         </div>
         
-        <!-- Opciones de Reset -->
-        <div class="reset-options" id="resetOptions">
-            <div class="card">
-                <h2>Configuración de Sesión</h2>
-                <p>Elige cómo deseas iniciar tu sesión de escaneo</p>
-                <button class="btn btn-primary" onclick="iniciarSesion(false)">
-                    📊 Continuar Conteo General
-                </button>
-                <button class="btn btn-secondary" onclick="iniciarSesion(true)">
-                    🔄 Resetear Conteo General
-                </button>
-            </div>
-        </div>
-        
         <!-- Sección del Scanner -->
         <div class="scanner-section" id="scannerSection">
             <!-- Dashboard del Día -->
             <div class="daily-dashboard" id="dailyDashboard">
+                <div class="user-info" style="margin-bottom: 20px;">
+                    <span>👤 <span class="name" id="operarioName"></span></span>
+                    <button onclick="cerrarSesion()">Salir</button>
+                </div>
+                
                 <h2 style="color: #00D9C0; font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;">
                     📊 Resumen de Hoy
                 </h2>
@@ -550,8 +541,26 @@
                     </div>
                 </div>
                 
-                <button class="btn btn-primary" onclick="mostrarScanner()" style="margin-bottom: 16px;">
-                    📷 Iniciar Escaneo
+                <div class="stats-divider"></div>
+                <div class="stats-section-title">Estadísticas Generales</div>
+                
+                <div class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="number" id="totalScans">0</div>
+                        <div class="label">Total General</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="number" id="totalRepeated">0</div>
+                        <div class="label">Repetidos</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="continuarEscaneo()" style="margin-bottom: 12px;">
+                    📷 Continuar Escaneo
+                </button>
+                
+                <button class="btn btn-secondary" onclick="resetearConteoGeneral()" style="margin-bottom: 12px;">
+                    🔄 Resetear Conteo General
                 </button>
                 
                 <button class="btn btn-secondary" onclick="abrirDashboardCompleto()">
@@ -660,8 +669,8 @@
                 return true;
             }
             
-            // Interrápidisimo: exactamente 13 dígitos que empiezan con "24"
-            if (codigo.length === 13 && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
+            // Interrápidisimo: exactamente 12 dígitos que empiezan con "24"
+            if (codigo.length === 12 && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
                 return true;
             }
             
@@ -675,8 +684,8 @@
                 return 'coordinadora';
             }
             
-            // Interrápidisimo: 13 dígitos que empiezan con "24"
-            if (codigo.length === 13 && codigo.startsWith('24')) {
+            // Interrápidisimo: exactamente 12 dígitos que empiezan con "24"
+            if (codigo.length === 12 && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
                 return 'interrapidisimo';
             }
             
@@ -713,6 +722,38 @@
             
             if (!html5QrcodeScanner) {
                 iniciarScanner();
+            }
+        }
+        
+        function continuarEscaneo() {
+            // Simplemente ir al scanner sin resetear nada
+            mostrarScanner();
+        }
+        
+        function resetearConteoGeneral() {
+            const confirmar = confirm('⚠️ ¿Estás seguro de resetear el conteo general?\n\nEsto NO borrará los datos de Google Sheets, solo los contadores locales.');
+            
+            if (confirmar) {
+                // Resetear contadores locales
+                sessionScans = 0;
+                sessionRepeated = 0;
+                codigosSesion = new Set();
+                
+                // Resetear stats del día
+                todayScans = 0;
+                todayRepeated = 0;
+                todayByCarrier = {
+                    coordinadora: 0,
+                    interrapidisimo: 0
+                };
+                
+                const hoy = new Date().toISOString().split('T')[0];
+                localStorage.removeItem(`stats_${hoy}`);
+                
+                actualizarEstadisticas();
+                actualizarDashboardDiario();
+                
+                alert('✅ Contadores locales reseteados. Base de datos en Sheets intacta.');
             }
         }
         
@@ -775,44 +816,7 @@
             
             // Cargar estadísticas del día
             cargarEstadisticasDelDia();
-            
-            // Cargar códigos desde Google Sheets
-            cargarCodigosDesdeSheets();
         };
-        
-        // Cargar todos los códigos existentes desde Google Sheets
-        function cargarCodigosDesdeSheets() {
-            console.log('Cargando códigos desde Google Sheets...');
-            
-            fetch(SHEET_URL, {
-                method: 'GET'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success' && data.codigos) {
-                    codigosGenerales = new Set(data.codigos);
-                    localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
-                    console.log(`✅ Cargados ${data.total} códigos desde la base de datos`);
-                    
-                    // Mostrar notificación al usuario
-                    const msg = document.getElementById('errorMessage');
-                    if (msg) {
-                        msg.textContent = `✅ Base de datos sincronizada: ${data.total} códigos cargados`;
-                        msg.style.background = 'rgba(0, 217, 192, 0.15)';
-                        msg.style.color = '#00D9C0';
-                        msg.style.borderColor = 'rgba(0, 217, 192, 0.3)';
-                        msg.classList.add('show');
-                        setTimeout(() => {
-                            msg.classList.remove('show');
-                        }, 3000);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error al cargar códigos:', error);
-                console.log('ℹ️ Usando códigos del localStorage');
-            });
-        }
         
         function mostrarOpcionesReset() {
             const input = document.getElementById('operarioInput').value.trim();
@@ -825,25 +829,53 @@
             operarioActual = input;
             localStorage.setItem('operario', operarioActual);
             
+            // Cargar códigos desde Sheets antes de mostrar el dashboard
             document.getElementById('loginSection').classList.remove('active');
-            document.getElementById('resetOptions').classList.add('active');
+            
+            // Mostrar mensaje de carga
+            const msg = document.createElement('div');
+            msg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 217, 192, 0.95); color: #0a0e1a; padding: 20px 40px; border-radius: 12px; font-weight: 600; z-index: 9999;';
+            msg.textContent = '🔄 Sincronizando base de datos...';
+            document.body.appendChild(msg);
+            
+            // Cargar códigos desde Sheets
+            fetch(SHEET_URL, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.codigos) {
+                    // IMPORTANTE: Reemplazar completamente los códigos locales con los de Sheets
+                    codigosGenerales = new Set(data.codigos);
+                    localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
+                    
+                    // Actualizar totalScans basado en la cantidad real de Sheets
+                    totalScans = data.total;
+                    localStorage.setItem('totalScans', totalScans);
+                    
+                    console.log(`✅ Sincronizado: ${data.total} códigos desde Google Sheets`);
+                    msg.textContent = `✅ ${data.total} códigos sincronizados`;
+                    
+                    setTimeout(() => {
+                        msg.remove();
+                        mostrarDashboard();
+                    }, 1000);
+                } else {
+                    msg.remove();
+                    mostrarDashboard();
+                }
+            })
+            .catch(error => {
+                console.error('Error al sincronizar:', error);
+                msg.textContent = '⚠️ Error de conexión. Usando datos locales.';
+                setTimeout(() => {
+                    msg.remove();
+                    mostrarDashboard();
+                }, 2000);
+            });
         }
         
-        function iniciarSesion(resetGeneral) {
-            if (resetGeneral) {
-                totalScans = 0;
-                totalRepeated = 0;
-                codigosGenerales = new Set();
-                localStorage.setItem('totalScans', '0');
-                localStorage.setItem('totalRepeated', '0');
-                localStorage.setItem('codigosGenerales', JSON.stringify([]));
-            }
-            
-            sessionScans = 0;
-            sessionRepeated = 0;
-            codigosSesion = new Set();
-            
-            document.getElementById('resetOptions').classList.remove('active');
+        function mostrarDashboard() {
             document.getElementById('scannerSection').classList.add('active');
             document.getElementById('operarioName').textContent = operarioActual;
             
