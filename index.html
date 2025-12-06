@@ -523,6 +523,58 @@
         
         <!-- Sección del Scanner -->
         <div class="scanner-section" id="scannerSection">
+            <!-- Dashboard del Día -->
+            <div class="daily-dashboard" id="dailyDashboard">
+                <h2 style="color: #00D9C0; font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;">
+                    📊 Resumen de Hoy
+                </h2>
+                
+                <div class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="number" id="todayTotal">0</div>
+                        <div class="label">Escaneados Hoy</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="number" id="todayRepeated">0</div>
+                        <div class="label">Repetidos Hoy</div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card" style="grid-column: span 2;">
+                        <div class="label" style="margin-bottom: 8px;">📊 Por Transportadora</div>
+                        <div id="todayByCarrier" style="font-size: 14px; color: #8892a6;">
+                            📦 Coordinadora: <span style="color: #00D9C0; font-weight: 600;">0</span><br>
+                            ⚡ Interrápidisimo: <span style="color: #00D9C0; font-weight: 600;">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="mostrarScanner()" style="margin-bottom: 16px;">
+                    📷 Iniciar Escaneo
+                </button>
+                
+                <button class="btn btn-secondary" onclick="abrirDashboardCompleto()">
+                    📈 Ver Dashboard Completo
+                </button>
+            </div>
+            
+            <!-- Selector de Transportadora -->
+            <div class="carrier-selector" id="carrierSelector" style="display: none;">
+                <div class="card" style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 14px; font-weight: 600; color: #00D9C0; margin-bottom: 12px;">
+                        🚚 Selecciona la Transportadora
+                    </label>
+                    <select id="transportadoraSelect" class="form-select" style="width: 100%; padding: 12px; background: rgba(26, 31, 46, 0.8); border: 1.5px solid rgba(136, 146, 166, 0.15); border-radius: 12px; font-size: 16px; color: #ffffff;">
+                        <option value="coordinadora">📦 Coordinadora</option>
+                        <option value="interrapidisimo">⚡ Interrápidisimo</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Scanner QR -->
+            <div class="scanner-container" id="scannerContainer" style="display: none;">
+            
             <div class="user-info">
                 <span>👤 <span class="name" id="operarioName"></span></span>
                 <button onclick="cerrarSesion()">Salir</button>
@@ -569,6 +621,8 @@
                     <span>🔊 Sonido de confirmación</span>
                 </label>
             </div>
+            
+            </div> <!-- Cierre de scanner-container -->
         </div>
     </div>
     
@@ -579,6 +633,7 @@
         const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyhfBmn8ydmITrLBBTDaR1vNPjsh47ThRv_ft-bKF7HZUz4gQ5rp5iMLaapxp_gO5Bu/exec';
         let html5QrcodeScanner = null;
         let operarioActual = '';
+        let transportadoraActual = 'coordinadora';
         
         let totalScans = 0;
         let totalRepeated = 0;
@@ -588,7 +643,120 @@
         let sessionRepeated = 0;
         let codigosSesion = new Set();
         
+        // Estadísticas del día
+        let todayScans = 0;
+        let todayRepeated = 0;
+        let todayByCarrier = {
+            coordinadora: 0,
+            interrapidisimo: 0
+        };
+        
         let isProcessing = false;
+        
+        // Validar si el código tiene un formato válido de transportadora conocida
+        function esFormatoValido(codigo) {
+            // Coordinadora: termina en "001" y tiene más de 20 caracteres
+            if (codigo.endsWith('001') && codigo.length > 20) {
+                return true;
+            }
+            
+            // Interrápidisimo: exactamente 13 dígitos que empiezan con "24"
+            if (codigo.length === 13 && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // Detectar transportadora automáticamente por el patrón del código
+        function detectarTransportadora(codigo) {
+            // Coordinadora: termina en "001" y tiene más de 20 caracteres
+            if (codigo.endsWith('001') && codigo.length > 20) {
+                return 'coordinadora';
+            }
+            
+            // Interrápidisimo: 13 dígitos que empiezan con "24"
+            if (codigo.length === 13 && codigo.startsWith('24')) {
+                return 'interrapidisimo';
+            }
+            
+            // Si no coincide con ningún patrón conocido
+            return null;
+        }
+        
+        // Funciones para extraer código según transportadora
+        function extraerCodigoPorTransportadora(codigoCompleto, transportadora) {
+            switch(transportadora) {
+                case 'coordinadora':
+                    // 11 dígitos antes de los últimos 3 ("001")
+                    return codigoCompleto.slice(-14, -3);
+                    
+                case 'interrapidisimo':
+                    // El código ya está correcto (13 dígitos completos)
+                    return codigoCompleto;
+                    
+                default:
+                    return codigoCompleto;
+            }
+        }
+        
+        // Obtener nombre de la transportadora para mostrar
+        function getNombreTransportadora(codigo) {
+            const trans = codigo === 'coordinadora' ? '📦 Coordinadora' : '⚡ Interrápidisimo';
+            return trans;
+        }
+        
+        function mostrarScanner() {
+            document.getElementById('dailyDashboard').style.display = 'none';
+            document.getElementById('carrierSelector').style.display = 'none';
+            document.getElementById('scannerContainer').style.display = 'block';
+            
+            if (!html5QrcodeScanner) {
+                iniciarScanner();
+            }
+        }
+        
+        function abrirDashboardCompleto() {
+            const sheetId = 'TU_SHEET_ID_AQUI'; // Daniel, pon aquí el ID de tu Google Sheet
+            window.open(`https://docs.google.com/spreadsheets/d/${sheetId}/edit`, '_blank');
+        }
+        
+        function actualizarDashboardDiario() {
+            document.getElementById('todayTotal').textContent = todayScans;
+            document.getElementById('todayRepeated').textContent = todayRepeated;
+            
+            document.getElementById('todayByCarrier').innerHTML = `
+                📦 Coordinadora: <span style="color: #00D9C0; font-weight: 600;">${todayByCarrier.coordinadora}</span><br>
+                ⚡ Interrápidisimo: <span style="color: #00D9C0; font-weight: 600;">${todayByCarrier.interrapidisimo}</span>
+            `;
+        }
+        
+        function cargarEstadisticasDelDia() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const statsHoy = localStorage.getItem(`stats_${hoy}`);
+            
+            if (statsHoy) {
+                const data = JSON.parse(statsHoy);
+                todayScans = data.total || 0;
+                todayRepeated = data.repeated || 0;
+                todayByCarrier = data.byCarrier || {
+                    coordinadora: 0,
+                    interrapidisimo: 0
+                };
+            }
+            
+            actualizarDashboardDiario();
+        }
+        
+        function guardarEstadisticasDelDia() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const data = {
+                total: todayScans,
+                repeated: todayRepeated,
+                byCarrier: todayByCarrier
+            };
+            localStorage.setItem(`stats_${hoy}`, JSON.stringify(data));
+        }
         
         window.onload = function() {
             const savedOperario = localStorage.getItem('operario');
@@ -604,7 +772,47 @@
                 operarioActual = savedOperario;
                 document.getElementById('operarioInput').value = savedOperario;
             }
+            
+            // Cargar estadísticas del día
+            cargarEstadisticasDelDia();
+            
+            // Cargar códigos desde Google Sheets
+            cargarCodigosDesdeSheets();
         };
+        
+        // Cargar todos los códigos existentes desde Google Sheets
+        function cargarCodigosDesdeSheets() {
+            console.log('Cargando códigos desde Google Sheets...');
+            
+            fetch(SHEET_URL, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.codigos) {
+                    codigosGenerales = new Set(data.codigos);
+                    localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
+                    console.log(`✅ Cargados ${data.total} códigos desde la base de datos`);
+                    
+                    // Mostrar notificación al usuario
+                    const msg = document.getElementById('errorMessage');
+                    if (msg) {
+                        msg.textContent = `✅ Base de datos sincronizada: ${data.total} códigos cargados`;
+                        msg.style.background = 'rgba(0, 217, 192, 0.15)';
+                        msg.style.color = '#00D9C0';
+                        msg.style.borderColor = 'rgba(0, 217, 192, 0.3)';
+                        msg.classList.add('show');
+                        setTimeout(() => {
+                            msg.classList.remove('show');
+                        }, 3000);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar códigos:', error);
+                console.log('ℹ️ Usando códigos del localStorage');
+            });
+        }
         
         function mostrarOpcionesReset() {
             const input = document.getElementById('operarioInput').value.trim();
@@ -639,8 +847,13 @@
             document.getElementById('scannerSection').classList.add('active');
             document.getElementById('operarioName').textContent = operarioActual;
             
+            // Mostrar dashboard primero
+            document.getElementById('dailyDashboard').style.display = 'block';
+            document.getElementById('carrierSelector').style.display = 'none';
+            document.getElementById('scannerContainer').style.display = 'none';
+            
             actualizarEstadisticas();
-            iniciarScanner();
+            cargarEstadisticasDelDia();
         }
         
         function actualizarEstadisticas() {
@@ -727,34 +940,115 @@
         }
         
         function enviarASheet(codigo) {
-            const codigoCorto = codigo.slice(-14, -3);
+            // 1. Validar formato
+            if (!esFormatoValido(codigo)) {
+                console.log('❌ Formato no válido:', codigo);
+                mostrarError('⚠️ Código no válido. Solo Coordinadora o Interrápidisimo.');
+                reproducirSonido(true); // Sonido de error
+                
+                setTimeout(() => {
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.resume();
+                    }
+                    isProcessing = false;
+                }, 1500);
+                return;
+            }
+            
+            // 2. Detectar transportadora automáticamente
+            const transportadoraDetectada = detectarTransportadora(codigo);
+            
+            if (!transportadoraDetectada) {
+                console.log('❌ Transportadora no detectada:', codigo);
+                mostrarError('⚠️ Transportadora no reconocida');
+                reproducirSonido(true);
+                
+                setTimeout(() => {
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.resume();
+                    }
+                    isProcessing = false;
+                }, 1500);
+                return;
+            }
+            
+            const codigoCorto = extraerCodigoPorTransportadora(codigo, transportadoraDetectada);
             
             console.log('Código original:', codigo);
+            console.log('Transportadora detectada:', transportadoraDetectada);
             console.log('Código extraído:', codigoCorto);
             
+            // 3. Verificar si es repetido
             const esRepetidoSesion = codigosSesion.has(codigoCorto);
             const esRepetidoGeneral = codigosGenerales.has(codigoCorto);
             const esRepetido = esRepetidoSesion || esRepetidoGeneral;
             
+            if (esRepetido) {
+                console.log('⚠️ Código REPETIDO - NO se guarda en Sheets');
+                
+                // Actualizar contadores locales
+                sessionScans++;
+                sessionRepeated++;
+                todayScans++;
+                todayRepeated++;
+                todayByCarrier[transportadoraDetectada]++;
+                
+                guardarEstadisticasDelDia();
+                actualizarEstadisticas();
+                actualizarDashboardDiario();
+                
+                // Mostrar feedback de repetido
+                const lastScanDiv = document.getElementById('lastScan');
+                lastScanDiv.classList.add('repeated');
+                const nombreTrans = getNombreTransportadora(transportadoraDetectada);
+                document.getElementById('lastCode').textContent = 
+                    `${codigoCorto} - ${nombreTrans} ⚠️ REPETIDO (NO GUARDADO)`;
+                lastScanDiv.classList.add('show');
+                
+                const readerDiv = document.getElementById('reader');
+                readerDiv.classList.remove('scanning');
+                readerDiv.classList.add('repeated');
+                
+                const overlay = document.getElementById('scanOverlay');
+                overlay.classList.add('repeated');
+                overlay.classList.add('show');
+                
+                mostrarExito(true); // Mostrar como repetido
+                reproducirSonido(true);
+                
+                setTimeout(() => {
+                    readerDiv.classList.remove('repeated');
+                    readerDiv.classList.add('scanning');
+                    overlay.classList.remove('show', 'repeated');
+                    
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.resume();
+                    }
+                    isProcessing = false;
+                }, 1500);
+                
+                return; // NO enviar a Sheets
+            }
+            
+            // 4. Código NUEVO y VÁLIDO - Guardar en todo
             codigosSesion.add(codigoCorto);
             codigosGenerales.add(codigoCorto);
             
             sessionScans++;
             totalScans++;
-            
-            if (esRepetido) {
-                sessionRepeated++;
-                totalRepeated++;
-            }
+            todayScans++;
+            todayByCarrier[transportadoraDetectada]++;
             
             localStorage.setItem('totalScans', totalScans);
-            localStorage.setItem('totalRepeated', totalRepeated);
             localStorage.setItem('codigosGenerales', JSON.stringify([...codigosGenerales]));
+            guardarEstadisticasDelDia();
             
             const formData = new URLSearchParams();
             formData.append('operario', operarioActual);
             formData.append('codigo', codigoCorto);
-            formData.append('repetido', esRepetido ? 'SI' : 'NO');
+            formData.append('transportadora', transportadoraDetectada);
+            
+            console.log('✅ Guardando en Google Sheets...');
             
             fetch(SHEET_URL, {
                 method: 'POST',
@@ -763,35 +1057,34 @@
                     'Content-Type': 'application/x-www-form-urlencoded',
                 }
             })
-            .then(response => {
-                console.log('Respuesta recibida');
+            .then(response => response.text())
+            .then(data => {
+                console.log('✅ Guardado exitoso en Sheets:', data);
                 
                 actualizarEstadisticas();
+                actualizarDashboardDiario();
                 
                 const lastScanDiv = document.getElementById('lastScan');
                 lastScanDiv.classList.remove('repeated');
-                if (esRepetido) {
-                    lastScanDiv.classList.add('repeated');
-                }
-                document.getElementById('lastCode').textContent = codigoCorto + (esRepetido ? ' ⚠️ REPETIDO' : '');
+                
+                const nombreTrans = getNombreTransportadora(transportadoraDetectada);
+                document.getElementById('lastCode').textContent = 
+                    `${codigoCorto} - ${nombreTrans} ✓ GUARDADO`;
                 lastScanDiv.classList.add('show');
                 
                 const readerDiv = document.getElementById('reader');
                 readerDiv.classList.remove('scanning');
-                readerDiv.classList.add(esRepetido ? 'repeated' : 'success');
+                readerDiv.classList.add('success');
                 
                 const overlay = document.getElementById('scanOverlay');
                 overlay.classList.remove('repeated');
-                if (esRepetido) {
-                    overlay.classList.add('repeated');
-                }
                 overlay.classList.add('show');
                 
-                mostrarExito(esRepetido);
-                reproducirSonido(esRepetido);
+                mostrarExito(false);
+                reproducirSonido(false);
                 
                 setTimeout(() => {
-                    readerDiv.classList.remove('success', 'repeated');
+                    readerDiv.classList.remove('success');
                     readerDiv.classList.add('scanning');
                     overlay.classList.remove('show');
                     
@@ -802,7 +1095,7 @@
                 }, 1500);
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('❌ Error al guardar:', error);
                 mostrarError('Error al guardar. Intenta de nuevo.');
                 
                 setTimeout(() => {
