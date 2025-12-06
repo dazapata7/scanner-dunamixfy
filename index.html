@@ -709,8 +709,9 @@
                 return true;
             }
             
-            // Interrápidisimo: exactamente 12 dígitos que empiezan con "24"
-            if (codigo.length === 12 && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
+            // Interrápidisimo: 12 o 13 dígitos que empiezan con "24"
+            const length = codigo.length;
+            if ((length === 12 || length === 13) && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
                 return true;
             }
             
@@ -724,8 +725,9 @@
                 return 'coordinadora';
             }
             
-            // Interrápidisimo: exactamente 12 dígitos que empiezan con "24"
-            if (codigo.length === 12 && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
+            // Interrápidisimo: 12 o 13 dígitos que empiezan con "24"
+            const length = codigo.length;
+            if ((length === 12 || length === 13) && codigo.startsWith('24') && /^\d+$/.test(codigo)) {
                 return 'interrapidisimo';
             }
             
@@ -741,7 +743,11 @@
                     return codigoCompleto.slice(-14, -3);
                     
                 case 'interrapidisimo':
-                    // El código ya está correcto (13 dígitos completos)
+                    // Si tiene 13 dígitos, usar solo los primeros 12
+                    // Si tiene 12 dígitos, usar todo
+                    if (codigoCompleto.length === 13) {
+                        return codigoCompleto.substring(0, 12);
+                    }
                     return codigoCompleto;
                     
                 default:
@@ -1169,6 +1175,12 @@
             console.log('Código original:', codigo);
             console.log('Transportadora detectada:', transportadoraDetectada);
             console.log('Código extraído:', codigoCorto);
+            
+            mostrarDebug(`📦 ${transportadoraDetectada}: ${codigo} → ${codigoCorto}`, 'info');
+            
+            if (codigo.length !== codigoCorto.length) {
+                mostrarDebug(`✂️ Código normalizado de ${codigo.length} a ${codigoCorto.length} dígitos`, 'success');
+            }
             
             // 3. Verificar si es repetido
             console.log('🔍 Verificando repetidos...');
